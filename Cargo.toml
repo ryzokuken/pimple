@@ -3,8 +3,8 @@ resolver = "2"
 members = ["crates/pimple-core", "crates/pimple-tauri"]
 
 [workspace.package]
-edition = "2021"
-rust-version = "1.83"
+edition = "2024"
+rust-version = "1.85"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/ryzokuken/pimple"
 
