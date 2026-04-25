@@ -9,7 +9,7 @@ use crate::EventTime;
 
 /// Persisted event definition. One per iCalendar UID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
 pub struct Event {
     pub uid: String,
     pub collection_id: CollectionId,
@@ -32,14 +32,14 @@ pub struct Event {
 
 /// Verbatim `RRULE` line (everything after `RRULE:`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
 pub struct RRuleSpec {
     pub line: String,
 }
 
 /// A single override of a recurring event (a VEVENT with a `RECURRENCE-ID`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
 pub struct OverrideInstance {
     pub recurrence_id: EventTime,
     pub start: EventTime,
@@ -51,7 +51,7 @@ pub struct OverrideInstance {
 
 /// A single concrete occurrence. Derived on query; never persisted.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
 pub struct EventInstance {
     pub event_uid: String,
     pub collection_id: CollectionId,

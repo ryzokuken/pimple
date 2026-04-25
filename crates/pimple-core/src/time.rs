@@ -7,7 +7,7 @@ use ts_rs::TS;
 
 /// All four iCalendar DATE-TIME forms modeled explicitly.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum EventTime {
     /// `DATE` value — wall-clock date with no time component.

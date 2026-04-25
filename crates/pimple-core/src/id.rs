@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
 #[serde(transparent)]
 pub struct CollectionId(String);
 

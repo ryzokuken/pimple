@@ -6,7 +6,7 @@ use ts_rs::TS;
 use crate::CollectionId;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
 pub struct Collection {
     pub id: CollectionId,
     #[ts(type = "string")]
