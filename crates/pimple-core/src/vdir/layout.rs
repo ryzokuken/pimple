@@ -10,8 +10,7 @@ use crate::id::CollectionId;
 /// Palette used when a collection lacks an explicit `color` file.
 /// Tailwind 500 hues; deliberately unfussy.
 const PALETTE: &[&str] = &[
-    "#ef4444", "#f97316", "#eab308", "#22c55e",
-    "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
+    "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
 ];
 
 /// Enumerate every subdirectory of `root` as a `Collection`.
@@ -24,8 +23,7 @@ const PALETTE: &[&str] = &[
 /// Returns `CoreError::Io` if `root` cannot be read or any of its entries
 /// cannot be statted, and `CoreError::VdirLayout` for non-UTF-8 directory names.
 pub fn enumerate_collections(root: &Path) -> Result<Vec<Collection>> {
-    let mut entries: Vec<_> = fs::read_dir(root)?
-        .collect::<std::io::Result<Vec<_>>>()?;
+    let mut entries: Vec<_> = fs::read_dir(root)?.collect::<std::io::Result<Vec<_>>>()?;
     entries.sort_by_key(std::fs::DirEntry::file_name);
 
     let mut out = Vec::with_capacity(entries.len());
@@ -38,10 +36,7 @@ pub fn enumerate_collections(root: &Path) -> Result<Vec<Collection>> {
             .file_name()
             .to_str()
             .ok_or_else(|| {
-                CoreError::VdirLayout(format!(
-                    "non-utf8 collection name at {}",
-                    path.display()
-                ))
+                CoreError::VdirLayout(format!("non-utf8 collection name at {}", path.display()))
             })?
             .to_owned();
         let id = CollectionId::new(&id_str);

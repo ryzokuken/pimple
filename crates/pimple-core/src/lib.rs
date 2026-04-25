@@ -6,6 +6,7 @@ pub mod collection;
 pub mod config;
 pub mod error;
 pub mod event;
+pub mod ical;
 pub mod id;
 pub mod time;
 pub mod vdir;
