@@ -10,6 +10,8 @@ pub enum CoreError {
     VdirLayout(String),
     #[error("datetime conversion: {0}")]
     Conversion(String),
+    #[error("ical parse: {0}")]
+    IcalParse(String),
 }
 
 pub type Result<T> = std::result::Result<T, CoreError>;

@@ -5,4 +5,5 @@
 //! `jiff` types for the rest of the crate.
 
 pub mod from_chrono;
+pub mod parse;
 pub mod to_chrono;
