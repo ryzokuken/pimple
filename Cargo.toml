@@ -1,18 +1,47 @@
-[package]
-name = "pimple"
-version = "0.1.0"
-authors = ["Ujjwal Sharma <ryzokuken@disroot.org>"]
-edition = "2018"
+[workspace]
+resolver = "2"
+members = ["crates/pimple-core", "crates/pimple-tauri"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace.package]
+edition = "2021"
+rust-version = "1.83"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/ryzokuken/pimple"
 
-[dependencies]
-time = "0.2"
+[workspace.lints.rust]
+unsafe_code = "deny"
 
-[dependencies.gtk]
-version = "0.9.0"
-features = ["v3_16"]
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+panic_in_result_fn = "deny"
+unimplemented = "deny"
+allow_attributes = "deny"
+dbg_macro = "deny"
+todo = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+await_holding_lock = "deny"
+large_futures = "deny"
+exit = "deny"
+mem_forget = "deny"
+module_name_repetitions = "allow"
+similar_names = "allow"
 
-[dependencies.gio]
-version = ""
-features = ["v2_44"]
+[workspace.dependencies]
+jiff = { version = "0.2", features = ["serde", "tzdb-bundle-always"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+chrono-tz = { version = "0.10", default-features = false }
+icalendar = { version = "0.17", features = ["parser", "chrono-tz"] }
+rrule = { version = "0.14" }
+notify = { version = "6", default-features = false, features = ["macos_kqueue"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "time"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ts-rs = { version = "10", features = ["serde-compat"] }
+uuid = { version = "1", features = ["v4", "serde"] }
