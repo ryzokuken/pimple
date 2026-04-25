@@ -8,6 +8,7 @@ pub mod error;
 pub mod event;
 pub mod id;
 pub mod time;
+pub mod vdir;
 
 pub use collection::Collection;
 pub use config::{AppConfig, WeekStart};

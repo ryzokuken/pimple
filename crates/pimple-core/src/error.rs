@@ -6,6 +6,8 @@ use thiserror::Error;
 pub enum CoreError {
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
+    #[error("vdir layout: {0}")]
+    VdirLayout(String),
 }
 
 pub type Result<T> = std::result::Result<T, CoreError>;
