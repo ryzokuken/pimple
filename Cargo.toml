@@ -37,7 +37,7 @@ chrono-tz = { version = "0.10", default-features = false }
 icalendar = { version = "0.17", features = ["parser", "chrono-tz"] }
 rrule = { version = "0.14" }
 notify = { version = "6", default-features = false, features = ["macos_kqueue"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "time"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "time", "io-util"] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
