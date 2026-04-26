@@ -11,6 +11,7 @@ pub mod ical;
 pub mod id;
 pub mod time;
 pub mod vdir;
+pub mod watcher;
 
 pub use collection::Collection;
 pub use config::{AppConfig, WeekStart};
