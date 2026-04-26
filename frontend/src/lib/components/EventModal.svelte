@@ -82,7 +82,7 @@
     aria-label="Create event"
     tabindex="-1"
     onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
+    onkeydown={(e) => { if (e.key !== "Escape") e.stopPropagation(); }}
   >
     <form onsubmit={submit}>
       <h2>New event</h2>
