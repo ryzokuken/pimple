@@ -3,7 +3,6 @@
 use serde::Serialize;
 use thiserror::Error;
 
-#[expect(dead_code, reason = "IPC commands added in Task 13")]
 #[derive(Debug, Error, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum IpcError {
@@ -29,5 +28,4 @@ impl From<pimple_core::CoreError> for IpcError {
     }
 }
 
-#[expect(dead_code, reason = "IPC commands added in Task 13")]
 pub type IpcResult<T> = std::result::Result<T, IpcError>;

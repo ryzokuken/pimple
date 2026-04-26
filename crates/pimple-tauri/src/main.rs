@@ -1,11 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod error;
-mod state;
-
+use pimple_tauri::{commands, state::AppState};
 use tracing_subscriber::EnvFilter;
-
-use crate::state::AppState;
 
 #[expect(
     clippy::expect_used,
@@ -22,7 +18,12 @@ fn main() {
 
     tauri::Builder::default()
         .manage(AppState::new())
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            commands::set_vdir_root,
+            commands::list_collections,
+            commands::events_in_range,
+            commands::create_event,
+        ])
         .run(tauri::generate_context!())
         .expect("failed to start pimple");
 }
