@@ -1,6 +1,7 @@
 # Build
 target/
 crates/pimple-tauri/icons/
+crates/pimple-tauri/gen/
 
 # Frontend
 frontend/node_modules/
