@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use pimple_tauri::{commands, state::AppState};
+use pimple_tauri::{commands, forwarder, state::AppState};
+use tauri::Manager;
 use tracing_subscriber::EnvFilter;
 
 #[expect(
@@ -18,6 +19,12 @@ fn main() {
 
     tauri::Builder::default()
         .manage(AppState::new())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            let state = app.state::<AppState>();
+            forwarder::spawn(handle, &state.index);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::set_vdir_root,
             commands::list_collections,
