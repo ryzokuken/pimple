@@ -1,7 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use pimple_tauri::{commands, forwarder, state::AppState};
+use pimple_tauri::{commands, diagnostics, forwarder, state::AppState};
 use tauri::Manager;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
 #[expect(
@@ -13,14 +15,17 @@ use tracing_subscriber::EnvFilter;
     reason = "tauri::generate_context! macro calls process::exit internally on config errors"
 )]
 fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .init();
-
     tauri::Builder::default()
         .manage(AppState::new())
         .setup(|app| {
             let handle = app.handle().clone();
+
+            tracing_subscriber::registry()
+                .with(EnvFilter::from_default_env())
+                .with(tracing_subscriber::fmt::layer())
+                .with(diagnostics::ForwardingLayer { handle: handle.clone() })
+                .init();
+
             let state = app.state::<AppState>();
             forwarder::spawn(handle, &state.index);
             Ok(())

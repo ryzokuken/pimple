@@ -3,6 +3,7 @@
   import EventModal from "./lib/components/EventModal.svelte";
   import Layout from "./lib/components/Layout.svelte";
   import Navigator from "./lib/components/Navigator.svelte";
+  import Toasts from "./lib/components/Toasts.svelte";
   import WeekGrid from "./lib/components/WeekGrid.svelte";
 
   let modalOpen = $state(false);
@@ -22,6 +23,8 @@
 {#if modalOpen}
   <EventModal onClose={() => (modalOpen = false)} />
 {/if}
+
+<Toasts />
 
 <style>
   .nav-wrap { display: flex; align-items: center; }
