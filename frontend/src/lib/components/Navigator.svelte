@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { Temporal } from "@js-temporal/polyfill";
 
   import { collections, events } from "../stores";
@@ -10,7 +11,7 @@
   const systemTz = Temporal.Now.timeZoneId();
 
   let cursor = $state<Temporal.ZonedDateTime>(
-    startOfWeek(Temporal.Now.zonedDateTimeISO(systemTz), weekStart),
+    startOfWeek(Temporal.Now.zonedDateTimeISO(systemTz), untrack(() => weekStart)),
   );
 
   $effect(() => {

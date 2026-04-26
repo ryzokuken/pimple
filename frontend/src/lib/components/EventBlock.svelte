@@ -9,12 +9,12 @@
   const { event, color, onSelect }: Props = $props();
 
   const minutesPerHour = 60;
-  const startHour = event.startMinute / minutesPerHour;
-  const endHour = event.endMinute / minutesPerHour;
-  const top = `${startHour * 48}px`;
-  const height = `${Math.max(20, (endHour - startHour) * 48)}px`;
-  const left = `${(event.column / event.columns) * 100}%`;
-  const width = `${(1 / event.columns) * 100}%`;
+  const top = $derived(`${(event.startMinute / minutesPerHour) * 48}px`);
+  const height = $derived(
+    `${Math.max(20, ((event.endMinute - event.startMinute) / minutesPerHour) * 48)}px`,
+  );
+  const left = $derived(`${(event.column / event.columns) * 100}%`);
+  const width = $derived(`${(1 / event.columns) * 100}%`);
 </script>
 
 <button
