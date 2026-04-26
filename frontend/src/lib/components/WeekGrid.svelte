@@ -1,32 +1,40 @@
 <script lang="ts">
   import { Temporal } from "@js-temporal/polyfill";
 
-  import { events } from "../stores";
+  import EventBlock from "./EventBlock.svelte";
+  import { collections, events } from "../stores";
+  import { layoutWeek, type LaidOutEvent } from "../layout";
+  import { eventTimeToZoned } from "../time/parse";
 
   const systemTz = Temporal.Now.timeZoneId();
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
   const DAYS = Array.from({ length: 7 }, (_, i) => i);
 
-  // Compute days from the first instance's start, falling back to today.
-  const weekStart = $derived.by<Temporal.ZonedDateTime>(() => {
-    const first = events.instances[0];
-    const ref = first
-      ? Temporal.Instant.from(eventInstanceStartIso(first)).toZonedDateTimeISO(systemTz)
-      : Temporal.Now.zonedDateTimeISO(systemTz);
-    const offset = (ref.dayOfWeek - 1 + 7) % 7; // Monday-based; configurable later
-    return ref
-      .subtract({ days: offset })
-      .with({ hour: 0, minute: 0, second: 0, millisecond: 0, microsecond: 0, nanosecond: 0 });
+  const weekStart = $derived(
+    Temporal.Now.zonedDateTimeISO(systemTz)
+      .subtract({ days: (Temporal.Now.zonedDateTimeISO(systemTz).dayOfWeek - 1 + 7) % 7 })
+      .with({ hour: 0, minute: 0, second: 0, millisecond: 0, microsecond: 0, nanosecond: 0 }),
+  );
+
+  const laidOut: LaidOutEvent[] = $derived.by(() => {
+    const items = events.instances.map((ei) => {
+      const start = eventTimeToZoned(ei.start, systemTz);
+      const end = eventTimeToZoned(ei.end, systemTz);
+      const dayIndex = Math.max(
+        0,
+        Math.min(6, Math.floor(start.epochMilliseconds / 86_400_000) -
+          Math.floor(weekStart.epochMilliseconds / 86_400_000)),
+      );
+      const startMinute = start.hour * 60 + start.minute;
+      const endMinute = end.hour * 60 + end.minute;
+      return { ...ei, dayIndex, startMinute, endMinute };
+    });
+    return layoutWeek(items);
   });
 
-  function eventInstanceStartIso(ei: import("../ipc/types").EventInstance): string {
-    const t = ei.start;
-    switch (t.kind) {
-      case "all_day": return Temporal.PlainDate.from(t.date).toZonedDateTime(systemTz).toInstant().toString();
-      case "floating": return Temporal.PlainDateTime.from(t.datetime).toZonedDateTime(systemTz).toInstant().toString();
-      case "utc": return t.instant;
-      case "zoned": return Temporal.ZonedDateTime.from(t.zoned).toInstant().toString();
-    }
+  function colorForCollection(cid: string): string {
+    const found = collections.list.find((c) => (c.id as unknown as string) === cid);
+    return found?.color ?? "#3b82f6";
   }
 
   function dayLabel(i: number): string {
@@ -53,6 +61,9 @@
         <div class="day-col" role="gridcell" data-day={d}>
           {#each HOURS as h (h)}
             <div class="hour-cell" data-hour={h}></div>
+          {/each}
+          {#each laidOut.filter((e) => e.dayIndex === d) as ev (`${ev.event_uid}-${ev.startMinute}`)}
+            <EventBlock event={ev} color={colorForCollection(ev.collection_id as unknown as string)} />
           {/each}
         </div>
       {/each}
