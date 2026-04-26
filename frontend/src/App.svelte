@@ -1,14 +1,12 @@
 <script lang="ts">
-  // Placeholder until Task 20 wires up Navigator + WeekGrid + Sidebar.
+  import CollectionSidebar from "./lib/components/CollectionSidebar.svelte";
+  import Layout from "./lib/components/Layout.svelte";
+  import Navigator from "./lib/components/Navigator.svelte";
+  import WeekGrid from "./lib/components/WeekGrid.svelte";
 </script>
 
-<main>
-  <h1>pimple</h1>
-  <p>pimple — coming online…</p>
-</main>
-
-<style>
-  main { padding: 1rem; }
-  h1 { font-weight: 500; margin: 0 0 0.5rem; }
-  p { color: var(--muted); }
-</style>
+<Layout>
+  {#snippet nav()}<Navigator />{/snippet}
+  {#snippet sidebar()}<CollectionSidebar />{/snippet}
+  {#snippet main()}<WeekGrid />{/snippet}
+</Layout>
