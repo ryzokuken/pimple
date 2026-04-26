@@ -62,3 +62,16 @@ pub struct EventInstance {
     pub end: EventTime,
     pub is_override: bool,
 }
+
+/// User-supplied data for creating a new event.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+pub struct CreateEventRequest {
+    pub collection_id: CollectionId,
+    pub summary: String,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    pub start: EventTime,
+    pub end: EventTime,
+    pub rrule: Option<RRuleSpec>,
+}

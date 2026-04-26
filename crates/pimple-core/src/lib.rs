@@ -16,6 +16,6 @@ pub mod watcher;
 pub use collection::Collection;
 pub use config::{AppConfig, WeekStart};
 pub use error::{CoreError, Result};
-pub use event::{Event, EventInstance, OverrideInstance, RRuleSpec};
+pub use event::{CreateEventRequest, Event, EventInstance, OverrideInstance, RRuleSpec};
 pub use id::CollectionId;
 pub use time::EventTime;
