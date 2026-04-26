@@ -4,6 +4,7 @@
 
 pub mod collection;
 pub mod config;
+pub mod index;
 pub mod error;
 pub mod event;
 pub mod ical;
