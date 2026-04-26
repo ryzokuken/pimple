@@ -10,6 +10,10 @@
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
   const DAYS = Array.from({ length: 7 }, (_, i) => i);
 
+  const nowZoned = Temporal.Now.zonedDateTimeISO(systemTz);
+  const todayIndex = (nowZoned.dayOfWeek - 1 + 7) % 7;
+  const nowMinute = nowZoned.hour * 60 + nowZoned.minute;
+
   const weekStart = $derived(
     Temporal.Now.zonedDateTimeISO(systemTz)
       .subtract({ days: (Temporal.Now.zonedDateTimeISO(systemTz).dayOfWeek - 1 + 7) % 7 })
@@ -62,6 +66,9 @@
           {#each HOURS as h (h)}
             <div class="hour-cell" data-hour={h}></div>
           {/each}
+          {#if d === todayIndex}
+            <div class="now-line" style:top={`${(nowMinute / 60) * 48}px`} aria-hidden="true"></div>
+          {/if}
           {#each laidOut.filter((e) => e.dayIndex === d) as ev (`${ev.event_uid}-${ev.startMinute}`)}
             <EventBlock event={ev} color={colorForCollection(ev.collection_id as unknown as string)} />
           {/each}
@@ -100,4 +107,11 @@
   }
   .day-col:last-child { border-right: none; }
   .hour-cell { border-bottom: 1px solid var(--border); }
+  .now-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 0;
+    border-top: 1px solid #ef4444;
+    z-index: 1;
+  }
 </style>
