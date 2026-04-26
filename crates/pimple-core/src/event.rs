@@ -65,7 +65,7 @@ pub struct EventInstance {
 
 /// User-supplied data for creating a new event.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../frontend/src/lib/ipc/types/")]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
 pub struct CreateEventRequest {
     pub collection_id: CollectionId,
     pub summary: String,
