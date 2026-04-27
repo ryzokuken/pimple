@@ -25,9 +25,14 @@ impl From<IndexChange> for EventsChangedPayload {
 }
 
 /// Spawn the forwarder. Lives for the lifetime of the app.
+///
+/// Uses `tauri::async_runtime::spawn` rather than `tokio::spawn` because
+/// Tauri's `setup` closure runs on the main event-loop thread, outside any
+/// Tokio reactor context. The Tauri runtime is bundled, always available,
+/// and routes onto the same multi-thread Tokio executor commands run on.
 pub fn spawn<R: Runtime>(handle: AppHandle<R>, index: &EventIndex) {
     let mut rx = index.subscribe();
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         loop {
             match rx.recv().await {
                 Ok(change) => {
