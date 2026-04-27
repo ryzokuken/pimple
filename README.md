@@ -30,50 +30,57 @@ for the v0.1 design and what's coming.
 
 ## Build and run
 
+The repository ships a [`justfile`](justfile) with the common entry points.
+Install [`just`](https://github.com/casey/just) (`cargo install just`) and
+[`tauri-cli`](https://v2.tauri.app/reference/cli/) (`cargo install tauri-cli`).
+
 ```sh
 git clone https://github.com/ryzokuken/pimple.git
 cd pimple
 
-# Install frontend dependencies (security-conscious by default: no install scripts).
-pnpm --dir frontend install
-
-# Build everything in release mode.
-cargo build --release --workspace
-
-# Run in dev mode against a vdir at ~/.calendars (set via the running app's
-# IPC; in v0.1 there is no first-run picker yet — point it via the
-# set_vdir_root command, or wait for v0.2).
-cargo run -p pimple-tauri
+just dev      # frontend (Vite) + Tauri shell with hot reload
+just build    # production frontend + release binary
+just check    # full check matrix: fmt, clippy, tests, type-check, build
+just e2e      # Playwright end-to-end smoke tests
+just fmt      # format Rust and frontend code in place
 ```
 
-For an iterative dev loop with hot-reload of the frontend:
+If you'd rather not use `just`, the equivalents are:
 
 ```sh
-cargo install tauri-cli --version '^2'
-cd crates/pimple-tauri && cargo tauri dev
+pnpm --dir frontend install               # frontend deps; ignore-scripts is on by default
+cd crates/pimple-tauri && cargo tauri dev # dev mode
+cargo build --release --workspace         # release Rust binary
+pnpm --dir frontend build                 # production frontend bundle
+```
+
+In v0.1 there is no first-run vdir picker. Until that lands in v0.2, point
+the running app at your vdir from the webview console:
+
+```js
+window.__TAURI__.core.invoke('set_vdir_root', { path: '/home/you/.calendars' });
 ```
 
 ## Test
 
 The Rust core, the Tauri bridge, and the frontend each have their own test
-suites. None of them depend on the others to run.
+suites. None of them depend on the others.
 
 ```sh
-# Rust: unit, integration, and property tests for pimple-core and pimple-tauri.
-cargo test --workspace
+just check   # everything CI runs
+just e2e     # Playwright (first run downloads Chromium)
+```
 
-# Lints and formatting (zero warnings policy).
+Or by hand:
+
+```sh
+cargo test --workspace
 cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all -- --check
 
-# Frontend: type-check, unit tests (Vitest), and a production build.
 pnpm --dir frontend check
 pnpm --dir frontend test
 pnpm --dir frontend build
-
-# End-to-end smoke tests (Playwright; first run downloads Chromium).
-pnpm --dir frontend exec playwright install chromium
-pnpm --dir frontend exec playwright test
 ```
 
 ## Project layout
