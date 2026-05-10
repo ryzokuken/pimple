@@ -126,12 +126,9 @@ fn exdates_as_utc(event: &Event) -> Result<Vec<chrono::DateTime<ChronoUtc>>> {
         .map(|t| match t {
             EventTime::Utc { instant } => Ok(jiff_timestamp_to_chrono_utc(*instant)),
             EventTime::Zoned { zoned } => Ok(jiff_timestamp_to_chrono_utc(zoned.timestamp())),
-            EventTime::AllDay { .. } | EventTime::Floating { .. } => {
-                Err(CoreError::IcalParse(
-                    "EXDATE without timezone reference cannot be matched to recurrence instants"
-                        .into(),
-                ))
-            }
+            EventTime::AllDay { .. } | EventTime::Floating { .. } => Err(CoreError::IcalParse(
+                "EXDATE without timezone reference cannot be matched to recurrence instants".into(),
+            )),
         })
         .collect()
 }

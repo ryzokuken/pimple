@@ -5,9 +5,9 @@ use std::time::Duration;
 use jiff::Timestamp;
 use tempfile::TempDir;
 
+use pimple_core::CollectionId;
 use pimple_core::index::EventIndex;
 use pimple_core::watcher::FilesystemWatcher;
-use pimple_core::CollectionId;
 
 fn ts(s: &str) -> Timestamp {
     s.parse().unwrap()

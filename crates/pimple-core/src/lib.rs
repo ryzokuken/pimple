@@ -4,11 +4,11 @@
 
 pub mod collection;
 pub mod config;
-pub mod index;
 pub mod error;
 pub mod event;
 pub mod ical;
 pub mod id;
+pub mod index;
 pub mod time;
 pub mod vdir;
 pub mod watcher;

@@ -19,10 +19,7 @@ use crate::ical::build::build_ics;
 ///
 /// Returns an error if the collection directory does not exist, or if the
 /// underlying file I/O operations fail.
-pub async fn create_event(
-    collection_path: &Path,
-    req: &CreateEventRequest,
-) -> Result<String> {
+pub async fn create_event(collection_path: &Path, req: &CreateEventRequest) -> Result<String> {
     if !collection_path.is_dir() {
         return Err(CoreError::VdirLayout(format!(
             "collection directory {} does not exist",

@@ -2,9 +2,9 @@
 
 use pimple_tauri::{commands, diagnostics, forwarder, state::AppState};
 use tauri::Manager;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 
 #[expect(
     clippy::expect_used,
@@ -23,7 +23,9 @@ fn main() {
             tracing_subscriber::registry()
                 .with(EnvFilter::from_default_env())
                 .with(tracing_subscriber::fmt::layer())
-                .with(diagnostics::ForwardingLayer { handle: handle.clone() })
+                .with(diagnostics::ForwardingLayer {
+                    handle: handle.clone(),
+                })
                 .init();
 
             let state = app.state::<AppState>();

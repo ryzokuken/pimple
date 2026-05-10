@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 use jiff::Timestamp;
 
+use pimple_core::CollectionId;
 use pimple_core::ical::parse::parse_ics;
 use pimple_core::index::{EventIndex, IndexChange};
-use pimple_core::CollectionId;
 
 fn fixture(name: &str) -> String {
     let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -23,11 +23,7 @@ fn ts(s: &str) -> Timestamp {
 async fn empty_index_returns_no_instances() {
     let idx = EventIndex::new();
     let out = idx
-        .events_in_range(
-            ts("2026-01-01T00:00:00Z"),
-            ts("2026-12-31T00:00:00Z"),
-            &[],
-        )
+        .events_in_range(ts("2026-01-01T00:00:00Z"), ts("2026-12-31T00:00:00Z"), &[])
         .await
         .unwrap();
     assert!(out.is_empty());
@@ -88,8 +84,10 @@ async fn remove_drops_the_event() {
     let idx = EventIndex::new();
     let event = parse_ics(&fixture("utc.ics"), CollectionId::new("personal")).unwrap();
     idx.apply_change(IndexChange::upsert(event)).await;
-    idx.apply_change(IndexChange::Remove { uid: "utc-1".into() })
-        .await;
+    idx.apply_change(IndexChange::Remove {
+        uid: "utc-1".into(),
+    })
+    .await;
 
     let out = idx
         .events_in_range(

@@ -43,7 +43,8 @@ pub fn spawn<R: Runtime>(handle: AppHandle<R>, index: &EventIndex) {
                 }
                 Err(RecvError::Lagged(n)) => {
                     debug!("forwarder lagged by {n} messages; emitting full reload");
-                    if let Err(e) = handle.emit("events_changed", EventsChangedPayload::FullReload) {
+                    if let Err(e) = handle.emit("events_changed", EventsChangedPayload::FullReload)
+                    {
                         warn!("emit lag-recovery FullReload failed: {e}");
                     }
                 }

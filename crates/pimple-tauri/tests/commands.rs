@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use tauri::test::{mock_builder, mock_context, noop_assets, MockRuntime};
+use tauri::test::{MockRuntime, mock_builder, mock_context, noop_assets};
 use tauri::{App, Manager};
 use tempfile::TempDir;
 
