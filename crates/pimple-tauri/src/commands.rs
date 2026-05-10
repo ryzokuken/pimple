@@ -10,12 +10,58 @@ use jiff::Timestamp;
 use pimple_core::vdir::layout::enumerate_collections;
 use pimple_core::watcher::FilesystemWatcher;
 use pimple_core::{
-    AppConfig, Collection, CollectionId, CreateEventRequest, EventInstance, config_store,
+    AppConfig, Collection, CollectionId, CoreError, CreateEventRequest, EventInstance, config_store,
 };
-use tauri::State;
+use tauri::{AppHandle, Runtime, State};
+use tauri_plugin_dialog::DialogExt;
 
 use crate::error::{IpcError, IpcResult};
 use crate::state::AppState;
+
+/// Install the given vdir path: start the watcher and update state.
+///
+/// Shared between [`set_vdir_root`] (user-driven) and
+/// [`auto_restore_vdir`] (startup-driven). Performs the same validation in
+/// both cases.
+///
+/// # Errors
+///
+/// Returns `CoreError::VdirLayout` if `root` is not a directory, or a watcher
+/// failure if the FS watch cannot start.
+pub async fn install_vdir_root(root: PathBuf, state: &AppState) -> Result<(), CoreError> {
+    if !root.is_dir() {
+        return Err(CoreError::VdirLayout(format!(
+            "not a directory: {}",
+            root.display()
+        )));
+    }
+    let watcher = FilesystemWatcher::start(root.clone(), state.index.clone()).await?;
+    *state.vdir_root.write().await = Some(root);
+    *state.watcher.write().await = Some(Arc::new(watcher));
+    Ok(())
+}
+
+/// On startup, read the persisted `AppConfig` and reinstall the watcher if
+/// `vdir_root` is set. Returns `Ok(true)` if a vdir was restored.
+///
+/// Silently returns `Ok(false)` when there is no config file or `vdir_root`
+/// is `None`; the first-run flow then prompts the user.
+///
+/// # Errors
+///
+/// Returns a core error if the config file exists but cannot be parsed, or
+/// if installing the watcher fails (typically a now-invalid vdir path).
+pub async fn auto_restore_vdir(state: &AppState) -> Result<bool, CoreError> {
+    let Some(config_dir) = state.resolve_config_dir() else {
+        return Ok(false);
+    };
+    let cfg = config_store::load(&config_dir)?;
+    let Some(root) = cfg.vdir_root else {
+        return Ok(false);
+    };
+    install_vdir_root(root, state).await?;
+    Ok(true)
+}
 
 /// Set the root vdir directory and start the filesystem watcher.
 ///
@@ -25,22 +71,28 @@ use crate::state::AppState;
 /// if the filesystem watcher fails to start.
 #[tauri::command]
 pub async fn set_vdir_root(path: String, state: State<'_, AppState>) -> IpcResult<()> {
-    let root = PathBuf::from(&path);
-    if !root.is_dir() {
-        return Err(IpcError::Vdir {
-            message: format!("not a directory: {path}"),
-        });
-    }
-    {
-        let mut current = state.vdir_root.write().await;
-        *current = Some(root.clone());
-    }
-    let watcher = FilesystemWatcher::start(root, state.index.clone())
+    install_vdir_root(PathBuf::from(&path), &state)
         .await
-        .map_err(IpcError::from)?;
-    let mut slot = state.watcher.write().await;
-    *slot = Some(Arc::new(watcher));
-    Ok(())
+        .map_err(IpcError::from)
+}
+
+/// Open a native folder picker and return the chosen path, or `None` if the
+/// user cancelled. Used by the first-run flow.
+///
+/// # Errors
+///
+/// Currently infallible at the IPC layer — the dialog plugin's
+/// `blocking_pick_folder` returns `None` on user-cancel rather than erroring.
+/// The result type stays `IpcResult` so future fallible variants don't break
+/// callers.
+#[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "tauri::AppHandle<R> is a thin shared handle; Tauri's command macro requires by-value"
+)]
+pub fn pick_vdir_root<R: Runtime>(app: AppHandle<R>) -> IpcResult<Option<PathBuf>> {
+    let picked = app.dialog().file().blocking_pick_folder();
+    Ok(picked.and_then(|fp| fp.into_path().ok()))
 }
 
 /// List all collections under the configured vdir root.

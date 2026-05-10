@@ -100,3 +100,59 @@ fn set_then_get_config_round_trips() {
     let loaded = commands::get_config(state).unwrap();
     assert_eq!(loaded, original);
 }
+
+#[tokio::test]
+async fn auto_restore_returns_false_when_no_config() {
+    let tmp = TempDir::new().unwrap();
+    let app = build_app_with_config_dir(tmp.path().to_owned());
+    let state = app.state::<AppState>();
+
+    let restored = commands::auto_restore_vdir(&state).await.unwrap();
+    assert!(!restored);
+    assert!(state.vdir_root.read().await.is_none());
+}
+
+#[tokio::test]
+async fn auto_restore_returns_false_when_vdir_root_is_none() {
+    let tmp = TempDir::new().unwrap();
+    let cfg = AppConfig::default();
+    pimple_core::config_store::save(&cfg, tmp.path()).unwrap();
+
+    let app = build_app_with_config_dir(tmp.path().to_owned());
+    let state = app.state::<AppState>();
+
+    let restored = commands::auto_restore_vdir(&state).await.unwrap();
+    assert!(!restored);
+    assert!(state.vdir_root.read().await.is_none());
+}
+
+#[tokio::test]
+async fn auto_restore_starts_watcher_for_persisted_vdir() {
+    let tmp = TempDir::new().unwrap();
+    let vdir = tmp.path().join("vdir");
+    std::fs::create_dir_all(vdir.join("personal")).unwrap();
+    std::fs::create_dir_all(vdir.join("work")).unwrap();
+
+    let config_dir = tmp.path().join("config");
+    let cfg = AppConfig {
+        vdir_root: Some(vdir.clone()),
+        ..AppConfig::default()
+    };
+    pimple_core::config_store::save(&cfg, &config_dir).unwrap();
+
+    let app = build_app_with_config_dir(config_dir);
+    let state = app.state::<AppState>();
+
+    let restored = commands::auto_restore_vdir(&state).await.unwrap();
+    assert!(restored);
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    assert_eq!(*state.vdir_root.read().await, Some(vdir));
+    let collections = commands::list_collections(state).await.unwrap();
+    let mut ids: Vec<_> = collections
+        .iter()
+        .map(|c| c.id.as_str().to_owned())
+        .collect();
+    ids.sort();
+    assert_eq!(ids, vec!["personal".to_owned(), "work".to_owned()]);
+}

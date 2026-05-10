@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 import type {
+  AppConfig,
   Collection,
   CreateEventRequest,
   EventInstance,
@@ -36,6 +37,19 @@ export async function createEvent(
   request: CreateEventRequest,
 ): Promise<string> {
   return await invoke<string>("create_event", { request });
+}
+
+export async function getConfig(): Promise<AppConfig> {
+  return await invoke<AppConfig>("get_config");
+}
+
+export async function setConfig(config: AppConfig): Promise<void> {
+  await invoke("set_config", { config });
+}
+
+/** Native folder picker. Resolves to `null` if the user cancels. */
+export async function pickVdirRoot(): Promise<string | null> {
+  return await invoke<string | null>("pick_vdir_root");
 }
 
 export async function onEventsChanged(

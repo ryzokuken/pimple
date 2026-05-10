@@ -16,6 +16,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 )]
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
         .setup(|app| {
             let handle = app.handle().clone();
@@ -29,7 +30,20 @@ fn main() {
                 .init();
 
             let state = app.state::<AppState>();
-            forwarder::spawn(handle, &state.index);
+            forwarder::spawn(handle.clone(), &state.index);
+
+            // Auto-restore the watcher from persisted config. Failure is
+            // non-fatal — the frontend falls back to the first-run picker.
+            let restore_handle = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                let state = restore_handle.state::<AppState>();
+                match commands::auto_restore_vdir(&state).await {
+                    Ok(true) => tracing::info!("auto-restored vdir from config"),
+                    Ok(false) => tracing::debug!("no persisted vdir; awaiting first-run picker"),
+                    Err(e) => tracing::warn!("auto-restore failed: {e}"),
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -39,6 +53,7 @@ fn main() {
             commands::create_event,
             commands::get_config,
             commands::set_config,
+            commands::pick_vdir_root,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start pimple");

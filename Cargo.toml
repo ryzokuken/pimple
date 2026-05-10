@@ -47,3 +47,4 @@ ts-rs = { version = "10", features = ["serde-compat"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 toml = "0.8"
 dirs = "5"
+tauri-plugin-dialog = "2"
