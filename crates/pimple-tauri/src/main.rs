@@ -37,6 +37,8 @@ fn main() {
             commands::list_collections,
             commands::events_in_range,
             commands::create_event,
+            commands::get_config,
+            commands::set_config,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start pimple");

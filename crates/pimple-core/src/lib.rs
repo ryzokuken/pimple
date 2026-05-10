@@ -4,6 +4,7 @@
 
 pub mod collection;
 pub mod config;
+pub mod config_store;
 pub mod error;
 pub mod event;
 pub mod ical;
@@ -15,7 +16,7 @@ pub mod watcher;
 pub mod write;
 
 pub use collection::Collection;
-pub use config::{AppConfig, WeekStart};
+pub use config::{AppConfig, WeekStart, WindowGeometry};
 pub use error::{CoreError, Result};
 pub use event::{CreateEventRequest, Event, EventInstance, OverrideInstance, RRuleSpec};
 pub use id::CollectionId;

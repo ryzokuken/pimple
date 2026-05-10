@@ -9,7 +9,9 @@ use std::sync::Arc;
 use jiff::Timestamp;
 use pimple_core::vdir::layout::enumerate_collections;
 use pimple_core::watcher::FilesystemWatcher;
-use pimple_core::{Collection, CollectionId, CreateEventRequest, EventInstance};
+use pimple_core::{
+    AppConfig, Collection, CollectionId, CreateEventRequest, EventInstance, config_store,
+};
 use tauri::State;
 
 use crate::error::{IpcError, IpcResult};
@@ -110,4 +112,46 @@ pub async fn create_event(
     pimple_core::write::create_event(&collection_path, &request)
         .await
         .map_err(IpcError::from)
+}
+
+/// Read the persisted `AppConfig` from disk. Returns defaults if the file is
+/// absent — `get_config` never errors on a missing file because the first
+/// launch legitimately has no config yet.
+///
+/// # Errors
+///
+/// Returns [`IpcError::Internal`] if the OS cannot identify a config
+/// directory, or a core error if the file exists but cannot be parsed.
+#[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "tauri::State<'_, T> is a thin shared handle; Tauri's command macro requires by-value"
+)]
+pub fn get_config(state: State<'_, AppState>) -> IpcResult<AppConfig> {
+    let dir = state
+        .resolve_config_dir()
+        .ok_or_else(|| IpcError::Internal {
+            message: "could not resolve OS config directory".into(),
+        })?;
+    config_store::load(&dir).map_err(IpcError::from)
+}
+
+/// Persist the given `AppConfig` to disk atomically.
+///
+/// # Errors
+///
+/// Returns [`IpcError::Internal`] if the OS cannot identify a config
+/// directory, or a core error if the write fails.
+#[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "tauri::State<'_, T> is a thin shared handle; Tauri's command macro requires by-value"
+)]
+pub fn set_config(config: AppConfig, state: State<'_, AppState>) -> IpcResult<()> {
+    let dir = state
+        .resolve_config_dir()
+        .ok_or_else(|| IpcError::Internal {
+            message: "could not resolve OS config directory".into(),
+        })?;
+    config_store::save(&config, &dir).map_err(IpcError::from)
 }
