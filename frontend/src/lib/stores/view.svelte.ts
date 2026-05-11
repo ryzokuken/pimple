@@ -1,29 +1,34 @@
 import { Temporal } from "@js-temporal/polyfill";
 
-import { startOfWeek } from "../time/parse";
+import { monthGridFor, startOfWeek } from "../time/parse";
 import type { WeekStart } from "../ipc/types";
+
+export type ViewMode = "week" | "month";
 
 interface ViewStoreInit {
   /** Wall-clock provider. Production passes `Temporal.Now.zonedDateTimeISO(tz)`;
    *  tests pin a frozen value so `goToday` is deterministic. */
   now: () => Temporal.ZonedDateTime;
   weekStart: WeekStart;
+  mode?: ViewMode;
 }
 
 /**
- * Owns the visible-week cursor and current week-start preference, shared
- * across Navigator (dispatches shifts) and WeekGrid (reads cursor and
- * weekStart for rendering).
+ * Owns the visible cursor, the current week-start preference, and the
+ * week-vs-month view mode. Shared by Navigator (dispatches shifts),
+ * WeekGrid, and MonthGrid (read cursor and mode for rendering).
  */
 export class ViewStore {
   cursor = $state<Temporal.ZonedDateTime>(undefined!);
   weekStart = $state<WeekStart>("monday");
+  mode = $state<ViewMode>("week");
 
   readonly #now: () => Temporal.ZonedDateTime;
 
   constructor(init: ViewStoreInit) {
     this.#now = init.now;
     this.weekStart = init.weekStart;
+    this.mode = init.mode ?? "week";
     this.cursor = startOfWeek(this.#now(), init.weekStart);
   }
 
@@ -32,9 +37,30 @@ export class ViewStore {
     this.cursor = this.cursor.add({ days: deltaDays });
   }
 
-  /** Snap cursor to the current week (relative to weekStart). */
+  /** Step by one logical unit forward (+1) or back (-1) — a week in week
+   *  mode, a month in month mode. */
+  step(forward: boolean): void {
+    if (this.mode === "week") {
+      this.shift(forward ? 7 : -7);
+    } else {
+      this.cursor = this.cursor.add({ months: forward ? 1 : -1 });
+    }
+  }
+
+  /** Snap cursor to today (week mode: current week; month mode: current month). */
   goToday(): void {
-    this.cursor = startOfWeek(this.#now(), this.weekStart);
+    if (this.mode === "week") {
+      this.cursor = startOfWeek(this.#now(), this.weekStart);
+    } else {
+      this.cursor = this.#now().with({
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+        microsecond: 0,
+        nanosecond: 0,
+      });
+    }
   }
 
   /**
@@ -42,17 +68,39 @@ export class ViewStore {
    * day in the new convention so the *visible week* stays the same — e.g.
    * flipping Monday → Sunday on a cursor of Mon Apr 20 yields Sun Apr 19,
    * not the prior Monday (Apr 13).
-   *
-   * Implementation: the safe pivot is a mid-week day (cursor + 3) which is
-   * inside the same visible window regardless of which day-of-week the
-   * cursor is currently anchored to. `startOfWeek` of that mid-week point
-   * then resolves cleanly under the new convention.
    */
   setWeekStart(value: WeekStart): void {
     if (this.weekStart === value) return;
     const midweek = this.cursor.add({ days: 3 });
     this.weekStart = value;
-    this.cursor = startOfWeek(midweek, value);
+    if (this.mode === "week") {
+      this.cursor = startOfWeek(midweek, value);
+    }
+    // In month mode the cursor anchors to a specific date within the month;
+    // weekStart only affects the grid edges, not the cursor.
+  }
+
+  /** Switch view mode. Keeps the cursor's date but re-anchors it to a
+   *  meaningful representative for the new mode. */
+  setMode(value: ViewMode): void {
+    if (this.mode === value) return;
+    this.mode = value;
+    if (value === "week") {
+      this.cursor = startOfWeek(this.cursor, this.weekStart);
+    }
+    // Month mode keeps cursor as-is (any day inside the month).
+  }
+
+  /**
+   * Date range to fetch events for, based on current mode. Reactive — Svelte
+   * 5 method calls on classes with $state fields re-run when the underlying
+   * state changes, so callers can pass `view.range()` into a $derived chain.
+   */
+  range(): { start: Temporal.ZonedDateTime; days: number } {
+    if (this.mode === "week") {
+      return { start: this.cursor, days: 7 };
+    }
+    return monthGridFor(this.cursor, this.weekStart);
   }
 }
 

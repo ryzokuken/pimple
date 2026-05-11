@@ -5,6 +5,7 @@
   import EventModal from "./lib/components/EventModal.svelte";
   import FirstRunPicker from "./lib/components/FirstRunPicker.svelte";
   import Layout from "./lib/components/Layout.svelte";
+  import MonthGrid from "./lib/components/MonthGrid.svelte";
   import Navigator from "./lib/components/Navigator.svelte";
   import Toasts from "./lib/components/Toasts.svelte";
   import WeekGrid from "./lib/components/WeekGrid.svelte";
@@ -31,7 +32,13 @@
       </div>
     {/snippet}
     {#snippet sidebar()}<CollectionSidebar />{/snippet}
-    {#snippet main()}<WeekGrid onSelect={(e) => (editingInstance = e)} />{/snippet}
+    {#snippet main()}
+      {#if view.mode === "week"}
+        <WeekGrid onSelect={(e) => (editingInstance = e)} />
+      {:else}
+        <MonthGrid onSelect={(e) => (editingInstance = e)} />
+      {/if}
+    {/snippet}
   </Layout>
 
   {#if createModalOpen}

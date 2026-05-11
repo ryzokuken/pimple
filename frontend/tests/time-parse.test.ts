@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   eventTimeToZoned,
+  monthGridFor,
   rangeIso,
   startOfWeek,
 } from "../src/lib/time/parse";
@@ -86,6 +87,44 @@ describe("startOfWeek", () => {
     );
     const sow = startOfWeek(sat, "sunday");
     expect(sow.day).toBe(19); // 6 days back
+  });
+});
+
+describe("monthGridFor", () => {
+  test("April 2026 (5-week month, Wed-first, Monday-start) yields 35 days from Mon Mar 30", () => {
+    const apr = Temporal.ZonedDateTime.from("2026-04-15T12:00:00[Europe/Berlin]");
+    const grid = monthGridFor(apr, "monday");
+    expect(grid.days).toBe(35);
+    expect(grid.start.month).toBe(3);
+    expect(grid.start.day).toBe(30);
+    expect(grid.start.dayOfWeek).toBe(1);
+  });
+
+  test("January 2023 (6-week month, Sunday-first, Monday-start) yields 42 days from Mon Dec 26", () => {
+    const jan = Temporal.ZonedDateTime.from("2023-01-15T12:00:00[Europe/Berlin]");
+    const grid = monthGridFor(jan, "monday");
+    expect(grid.days).toBe(42);
+    expect(grid.start.year).toBe(2022);
+    expect(grid.start.month).toBe(12);
+    expect(grid.start.day).toBe(26);
+  });
+
+  test("April 2026 with Sunday-start yields a Sunday gridStart", () => {
+    const apr = Temporal.ZonedDateTime.from("2026-04-15T12:00:00[Europe/Berlin]");
+    const grid = monthGridFor(apr, "sunday");
+    expect(grid.start.dayOfWeek).toBe(7);
+    // Apr 1 is Wed; the prior Sunday is Mar 29.
+    expect(grid.start.month).toBe(3);
+    expect(grid.start.day).toBe(29);
+  });
+
+  test("gridStart is at midnight in the input's zone", () => {
+    const z = Temporal.ZonedDateTime.from("2026-04-15T18:30:45[Europe/Berlin]");
+    const grid = monthGridFor(z, "monday");
+    expect(grid.start.hour).toBe(0);
+    expect(grid.start.minute).toBe(0);
+    expect(grid.start.second).toBe(0);
+    expect(grid.start.timeZoneId).toBe("Europe/Berlin");
   });
 });
 

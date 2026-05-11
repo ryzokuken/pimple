@@ -98,3 +98,59 @@ describe("ViewStore.goToday", () => {
     expect(view.cursor.day).toBe(20); // back to Mon Apr 20
   });
 });
+
+describe("ViewStore.mode + step", () => {
+  test("step(forward=true) in week mode advances by 7 days", () => {
+    const now = at("2026-04-22T10:00:00[Europe/Berlin]");
+    const view = new ViewStore({ now: () => now, weekStart: "monday" });
+    view.step(true);
+    expect(view.cursor.day).toBe(27);
+  });
+
+  test("step(forward=true) in month mode advances by 1 month", () => {
+    const now = at("2026-04-22T10:00:00[Europe/Berlin]");
+    const view = new ViewStore({
+      now: () => now,
+      weekStart: "monday",
+      mode: "month",
+    });
+    // Initial cursor lands at Mon Apr 20 (startOfWeek of Apr 22).
+    view.step(true);
+    expect(view.cursor.month).toBe(5);
+    expect(view.cursor.day).toBe(20);
+  });
+
+  test("setMode(week) re-anchors cursor to startOfWeek", () => {
+    const now = at("2026-04-22T10:00:00[Europe/Berlin]");
+    const view = new ViewStore({
+      now: () => now,
+      weekStart: "monday",
+      mode: "month",
+    });
+    view.cursor = at("2026-04-22T10:00:00[Europe/Berlin]"); // Wed mid-month
+    view.setMode("week");
+    expect(view.cursor.dayOfWeek).toBe(1);
+    expect(view.cursor.day).toBe(20);
+  });
+
+  test("range() returns 7 days in week mode", () => {
+    const now = at("2026-04-22T10:00:00[Europe/Berlin]");
+    const view = new ViewStore({ now: () => now, weekStart: "monday" });
+    const r = view.range();
+    expect(r.days).toBe(7);
+    expect(r.start.day).toBe(20);
+  });
+
+  test("range() returns 35 days for April 2026 in month mode", () => {
+    const now = at("2026-04-22T10:00:00[Europe/Berlin]");
+    const view = new ViewStore({
+      now: () => now,
+      weekStart: "monday",
+      mode: "month",
+    });
+    const r = view.range();
+    expect(r.days).toBe(35);
+    expect(r.start.month).toBe(3);
+    expect(r.start.day).toBe(30);
+  });
+});
