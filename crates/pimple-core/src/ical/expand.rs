@@ -64,20 +64,30 @@ pub fn expand_in_range(
         if exdates_utc.contains(&occ_utc) {
             continue;
         }
+        // `recurrence_id` always points to the *original* occurrence time
+        // produced by the RRULE, even when an override redirects it. This is
+        // what RFC 5545 §3.8.4.4 requires and what addresses operations need.
+        let original_start = occurrence_to_event_time(&event.start, &occ)?;
         if let Some(override_inst) = find_override(event, &occ_utc) {
-            out.push(instance_from_override(event, override_inst));
+            out.push(instance_from_override(
+                event,
+                override_inst,
+                &original_start,
+            ));
         } else {
-            let start = occurrence_to_event_time(&event.start, &occ)?;
-            let end = shift_event_time(&start, duration);
+            let end = shift_event_time(&original_start, duration);
             out.push(EventInstance {
                 event_uid: event.uid.clone(),
                 collection_id: event.collection_id.clone(),
                 summary: event.summary.clone(),
                 description: event.description.clone(),
                 location: event.location.clone(),
-                start,
+                start: original_start.clone(),
                 end,
                 is_override: false,
+                recurrence_id: original_start,
+                raw_hash: event.raw_hash.clone(),
+                is_recurring: true,
             });
         }
     }
@@ -103,10 +113,17 @@ fn non_recurring(
         start: event.start.clone(),
         end: event.end.clone(),
         is_override: false,
+        recurrence_id: event.start.clone(),
+        raw_hash: event.raw_hash.clone(),
+        is_recurring: false,
     }]
 }
 
-fn instance_from_override(event: &Event, ov: &OverrideInstance) -> EventInstance {
+fn instance_from_override(
+    event: &Event,
+    ov: &OverrideInstance,
+    original_start: &EventTime,
+) -> EventInstance {
     EventInstance {
         event_uid: event.uid.clone(),
         collection_id: event.collection_id.clone(),
@@ -116,6 +133,9 @@ fn instance_from_override(event: &Event, ov: &OverrideInstance) -> EventInstance
         start: ov.start.clone(),
         end: ov.end.clone(),
         is_override: true,
+        recurrence_id: original_start.clone(),
+        raw_hash: event.raw_hash.clone(),
+        is_recurring: true,
     }
 }
 

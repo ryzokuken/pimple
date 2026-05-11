@@ -6,6 +6,11 @@
   import { layoutWeek, type LaidOutEvent } from "../layout";
   import { eventTimeToZoned } from "../time/parse";
 
+  type Props = {
+    onSelect?: (e: LaidOutEvent) => void;
+  };
+  const { onSelect }: Props = $props();
+
   const systemTz = Temporal.Now.timeZoneId();
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
   const DAYS = Array.from({ length: 7 }, (_, i) => i);
@@ -74,7 +79,11 @@
             <div class="now-line" style:top={`${(nowMinute / 60) * 48}px`} aria-hidden="true"></div>
           {/if}
           {#each laidOut.filter((e) => e.dayIndex === d) as ev (`${ev.event_uid}-${ev.startMinute}`)}
-            <EventBlock event={ev} color={colorForCollection(ev.collection_id as unknown as string)} />
+            <EventBlock
+              event={ev}
+              color={colorForCollection(ev.collection_id as unknown as string)}
+              {onSelect}
+            />
           {/each}
         </div>
       {/each}

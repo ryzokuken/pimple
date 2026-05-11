@@ -48,3 +48,5 @@ uuid = { version = "1", features = ["v4", "serde"] }
 toml = "0.8"
 dirs = "5"
 tauri-plugin-dialog = "2"
+sha2 = "0.10"
+hex = "0.4"

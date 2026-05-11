@@ -5,6 +5,7 @@ import type {
   AppConfig,
   Collection,
   CreateEventRequest,
+  DeleteEventRequest,
   EventInstance,
 } from "./ipc/types";
 
@@ -37,6 +38,12 @@ export async function createEvent(
   request: CreateEventRequest,
 ): Promise<string> {
   return await invoke<string>("create_event", { request });
+}
+
+export async function deleteEvent(
+  request: DeleteEventRequest,
+): Promise<void> {
+  await invoke("delete_event", { request });
 }
 
 export async function getConfig(): Promise<AppConfig> {

@@ -37,6 +37,8 @@ tauri-plugin-dialog = { workspace = true }
 tauri = { version = "2", features = ["test"] }
 tempfile = "3"
 tokio = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

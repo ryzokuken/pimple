@@ -6,12 +6,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use pimple_core::{AppConfig, WeekStart, WindowGeometry};
+use pimple_core::event::{DeleteEventRequest, RecurringScope};
+use pimple_core::{AppConfig, CollectionId, WeekStart, WindowGeometry};
+use sha2::{Digest, Sha256};
 use tauri::test::{MockRuntime, mock_builder, mock_context, noop_assets};
 use tauri::{App, Manager};
 use tempfile::TempDir;
 
 use pimple_tauri::commands;
+use pimple_tauri::error::IpcError;
 use pimple_tauri::state::AppState;
 
 fn build_app() -> App<MockRuntime> {
@@ -22,12 +25,19 @@ fn build_app() -> App<MockRuntime> {
             commands::list_collections,
             commands::events_in_range,
             commands::create_event,
+            commands::delete_event,
             commands::get_config,
             commands::set_config,
         ])
         .build(mock_context(noop_assets()))
         .unwrap()
 }
+
+fn hex_sha256(s: &str) -> String {
+    hex::encode(Sha256::digest(s.as_bytes()))
+}
+
+const WEEKLY_ICS: &str = include_str!("../../pimple-core/tests/fixtures/ics/weekly.ics");
 
 fn build_app_with_config_dir(config_dir: PathBuf) -> App<MockRuntime> {
     mock_builder()
@@ -124,6 +134,72 @@ async fn auto_restore_returns_false_when_vdir_root_is_none() {
     let restored = commands::auto_restore_vdir(&state).await.unwrap();
     assert!(!restored);
     assert!(state.vdir_root.read().await.is_none());
+}
+
+#[tokio::test]
+async fn delete_event_all_removes_file_and_index_entry() {
+    let tmp = TempDir::new().unwrap();
+    let cal = tmp.path().join("personal");
+    std::fs::create_dir_all(&cal).unwrap();
+    let uid = "standup-1"; // matches weekly.ics
+    std::fs::write(cal.join(format!("{uid}.ics")), WEEKLY_ICS).unwrap();
+
+    let app = build_app();
+    let state = app.state::<AppState>();
+    commands::set_vdir_root(tmp.path().to_string_lossy().into_owned(), state.clone())
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    commands::delete_event(
+        DeleteEventRequest {
+            uid: uid.to_owned(),
+            collection_id: CollectionId::new("personal"),
+            expected_raw_hash: hex_sha256(WEEKLY_ICS),
+            scope: RecurringScope::All,
+            occurrence: None,
+        },
+        state,
+    )
+    .await
+    .unwrap();
+
+    assert!(!cal.join(format!("{uid}.ics")).exists());
+}
+
+#[tokio::test]
+async fn delete_event_with_hash_drift_returns_conflict() {
+    let tmp = TempDir::new().unwrap();
+    let cal = tmp.path().join("personal");
+    std::fs::create_dir_all(&cal).unwrap();
+    let uid = "standup-1";
+    std::fs::write(cal.join(format!("{uid}.ics")), WEEKLY_ICS).unwrap();
+
+    let app = build_app();
+    let state = app.state::<AppState>();
+    commands::set_vdir_root(tmp.path().to_string_lossy().into_owned(), state.clone())
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    let err = commands::delete_event(
+        DeleteEventRequest {
+            uid: uid.to_owned(),
+            collection_id: CollectionId::new("personal"),
+            expected_raw_hash: "0".repeat(64),
+            scope: RecurringScope::All,
+            occurrence: None,
+        },
+        state,
+    )
+    .await
+    .unwrap_err();
+
+    assert!(
+        matches!(err, IpcError::Conflict { .. }),
+        "expected Conflict, got {err:?}"
+    );
+    assert!(cal.join(format!("{uid}.ics")).exists());
 }
 
 #[tokio::test]

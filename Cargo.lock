@@ -2579,6 +2579,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "chrono-tz",
+ "hex",
  "icalendar",
  "jiff",
  "notify",
@@ -2586,6 +2587,7 @@ dependencies = [
  "rrule",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -2600,10 +2602,12 @@ name = "pimple-tauri"
 version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",
+ "hex",
  "jiff",
  "pimple-core",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

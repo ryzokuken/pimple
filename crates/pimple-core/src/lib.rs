@@ -18,6 +18,9 @@ pub mod write;
 pub use collection::Collection;
 pub use config::{AppConfig, WeekStart, WindowGeometry};
 pub use error::{CoreError, Result};
-pub use event::{CreateEventRequest, Event, EventInstance, OverrideInstance, RRuleSpec};
+pub use event::{
+    CreateEventRequest, DeleteEventRequest, Event, EventInstance, OverrideInstance, RRuleSpec,
+    RecurringScope,
+};
 pub use id::CollectionId;
 pub use time::EventTime;

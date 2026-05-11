@@ -10,7 +10,8 @@ use jiff::Timestamp;
 use pimple_core::vdir::layout::enumerate_collections;
 use pimple_core::watcher::FilesystemWatcher;
 use pimple_core::{
-    AppConfig, Collection, CollectionId, CoreError, CreateEventRequest, EventInstance, config_store,
+    AppConfig, Collection, CollectionId, CoreError, CreateEventRequest, DeleteEventRequest,
+    EventInstance, config_store,
 };
 use tauri::{AppHandle, Runtime, State};
 use tauri_plugin_dialog::DialogExt;
@@ -162,6 +163,30 @@ pub async fn create_event(
     };
     let collection_path = root.join(request.collection_id.as_str());
     pimple_core::write::create_event(&collection_path, &request)
+        .await
+        .map_err(IpcError::from)
+}
+
+/// Delete an event, honouring the request's `RecurringScope`.
+///
+/// # Errors
+///
+/// Returns [`IpcError::Conflict`] if the on-disk file's hash has drifted from
+/// `expected_raw_hash`, [`IpcError::InvalidScope`] for inconsistent scope
+/// arguments, or a core error for I/O or parse failures.
+#[tauri::command]
+pub async fn delete_event(
+    request: DeleteEventRequest,
+    state: State<'_, AppState>,
+) -> IpcResult<()> {
+    let root = state.vdir_root.read().await.clone();
+    let Some(root) = root else {
+        return Err(IpcError::Vdir {
+            message: "no vdir configured".into(),
+        });
+    };
+    let collection_path = root.join(request.collection_id.as_str());
+    pimple_core::write::delete_event(&collection_path, &request)
         .await
         .map_err(IpcError::from)
 }

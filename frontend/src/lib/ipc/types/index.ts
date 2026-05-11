@@ -9,3 +9,5 @@ export type { AppConfig } from "./AppConfig";
 export type { WeekStart } from "./WeekStart";
 export type { WindowGeometry } from "./WindowGeometry";
 export type { CreateEventRequest } from "./CreateEventRequest";
+export type { DeleteEventRequest } from "./DeleteEventRequest";
+export type { RecurringScope } from "./RecurringScope";

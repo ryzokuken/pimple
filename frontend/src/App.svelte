@@ -3,14 +3,17 @@
 
   import CollectionSidebar from "./lib/components/CollectionSidebar.svelte";
   import EventModal from "./lib/components/EventModal.svelte";
+  import EventViewModal from "./lib/components/EventViewModal.svelte";
   import FirstRunPicker from "./lib/components/FirstRunPicker.svelte";
   import Layout from "./lib/components/Layout.svelte";
   import Navigator from "./lib/components/Navigator.svelte";
   import Toasts from "./lib/components/Toasts.svelte";
   import WeekGrid from "./lib/components/WeekGrid.svelte";
+  import type { EventInstance } from "./lib/ipc/types";
   import { config, view } from "./lib/stores";
 
-  let modalOpen = $state(false);
+  let createModalOpen = $state(false);
+  let viewingInstance = $state<EventInstance | null>(null);
 
   onMount(async () => {
     await config.load();
@@ -25,15 +28,21 @@
     {#snippet nav()}
       <div class="nav-wrap">
         <Navigator />
-        <button type="button" class="new" onclick={() => (modalOpen = true)}>+ New</button>
+        <button type="button" class="new" onclick={() => (createModalOpen = true)}>+ New</button>
       </div>
     {/snippet}
     {#snippet sidebar()}<CollectionSidebar />{/snippet}
-    {#snippet main()}<WeekGrid />{/snippet}
+    {#snippet main()}<WeekGrid onSelect={(e) => (viewingInstance = e)} />{/snippet}
   </Layout>
 
-  {#if modalOpen}
-    <EventModal onClose={() => (modalOpen = false)} />
+  {#if createModalOpen}
+    <EventModal onClose={() => (createModalOpen = false)} />
+  {/if}
+  {#if viewingInstance}
+    <EventViewModal
+      event={viewingInstance}
+      onClose={() => (viewingInstance = null)}
+    />
   {/if}
 {/if}
 

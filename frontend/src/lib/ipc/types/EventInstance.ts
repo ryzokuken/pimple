@@ -5,4 +5,21 @@ import type { EventTime } from "./EventTime";
 /**
  * A single concrete occurrence. Derived on query; never persisted.
  */
-export type EventInstance = { event_uid: string, collection_id: CollectionId, summary: string, description: string | null, location: string | null, start: EventTime, end: EventTime, is_override: boolean, };
+export type EventInstance = { event_uid: string, collection_id: CollectionId, summary: string, description: string | null, location: string | null, start: EventTime, end: EventTime, is_override: boolean, 
+/**
+ * `RECURRENCE-ID` value for this concrete occurrence (the master's
+ * DTSTART for non-recurring events; the occurrence's original start
+ * time for recurring ones, even when overridden). The frontend uses
+ * this to address "this instance" on delete/edit operations.
+ */
+recurrence_id: EventTime, 
+/**
+ * Master event's `raw_hash`. Carried so the frontend can pass it back
+ * to update/delete commands for concurrent-write detection.
+ */
+raw_hash: string, 
+/**
+ * Whether the underlying `Event` has any `RRULE` — drives the UI's
+ * "show recurring-scope dialog?" decision without a separate fetch.
+ */
+is_recurring: boolean, };
