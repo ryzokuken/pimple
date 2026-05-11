@@ -51,6 +51,7 @@ fn main() {
             commands::list_collections,
             commands::events_in_range,
             commands::create_event,
+            commands::update_event,
             commands::delete_event,
             commands::get_config,
             commands::set_config,

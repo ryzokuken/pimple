@@ -7,7 +7,9 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 use crate::error::{CoreError, Result};
-use crate::event::{CreateEventRequest, DeleteEventRequest, RecurringScope};
+use crate::event::{
+    CreateEventRequest, DeleteEventRequest, OverrideInstance, RecurringScope, UpdateEventRequest,
+};
 use crate::ical::build::build_ics;
 use crate::ical::patch::{IcsMutation, patch_ics};
 
@@ -98,6 +100,114 @@ pub async fn delete_event(collection_path: &Path, req: &DeleteEventRequest) -> R
         }
     }
     Ok(())
+}
+
+/// Update an event, honouring [`RecurringScope`].
+///
+/// * `RecurringScope::All` rewrites the master VEVENT's summary, description,
+///   location, start, end, and rrule with the request values.
+/// * `RecurringScope::ThisInstance` appends an override VEVENT (with
+///   `RECURRENCE-ID` set to `occurrence`) carrying the request values.
+/// * `RecurringScope::ThisAndFuture` truncates the master `RRULE` with
+///   `UNTIL=<occurrence>`, drops any overrides at-or-after the occurrence,
+///   AND writes a new continuation file with a fresh UID carrying the
+///   request values. The new UID is returned in the `Some` arm of the result.
+///
+/// All paths verify `expected_raw_hash` matches the on-disk file's SHA-256
+/// before mutating, returning [`CoreError::Conflict`] on mismatch. Writes
+/// are atomic via temp-file + rename.
+///
+/// The `ThisAndFuture` flow writes the continuation file *before* truncating
+/// the master, so a crash between the two operations leaves the master
+/// intact and the user can retry without data loss.
+///
+/// # Errors
+///
+/// * [`CoreError::Conflict`] — on-disk hash drift since the caller's read.
+/// * [`CoreError::InvalidScope`] — `ThisInstance`/`ThisAndFuture` without
+///   an `occurrence` value.
+/// * [`CoreError::Io`] — file I/O failures.
+/// * [`CoreError::IcalParse`] — malformed on-disk `.ics`.
+pub async fn update_event(
+    collection_path: &Path,
+    req: &UpdateEventRequest,
+) -> Result<Option<String>> {
+    if !collection_path.is_dir() {
+        return Err(CoreError::VdirLayout(format!(
+            "collection directory {} does not exist",
+            collection_path.display()
+        )));
+    }
+    let file_path = collection_path.join(format!("{}.ics", req.uid));
+    let raw = fs::read_to_string(&file_path).await?;
+    let actual_hash = hex_sha256(raw.as_bytes());
+    if actual_hash != req.expected_raw_hash {
+        return Err(CoreError::Conflict {
+            uid: req.uid.clone(),
+        });
+    }
+
+    match req.scope {
+        RecurringScope::All => {
+            let mutations = [
+                IcsMutation::SetMasterSummary(req.summary.clone()),
+                IcsMutation::SetMasterDescription(req.description.clone()),
+                IcsMutation::SetMasterLocation(req.location.clone()),
+                IcsMutation::SetMasterStart(req.start.clone()),
+                IcsMutation::SetMasterEnd(req.end.clone()),
+                IcsMutation::SetMasterRRule(req.rrule.clone()),
+            ];
+            let patched = patch_ics(&raw, &mutations)?;
+            write_atomic(&file_path, patched.as_bytes()).await?;
+            Ok(None)
+        }
+        RecurringScope::ThisInstance => {
+            let occ = req.occurrence.as_ref().ok_or_else(|| {
+                CoreError::InvalidScope("ThisInstance requires an occurrence recurrence_id".into())
+            })?;
+            let override_inst = OverrideInstance {
+                recurrence_id: occ.clone(),
+                start: req.start.clone(),
+                end: req.end.clone(),
+                summary: Some(req.summary.clone()),
+                description: req.description.clone(),
+                location: req.location.clone(),
+            };
+            let patched = patch_ics(&raw, &[IcsMutation::AddOverrideVEvent(override_inst)])?;
+            write_atomic(&file_path, patched.as_bytes()).await?;
+            Ok(None)
+        }
+        RecurringScope::ThisAndFuture => {
+            let occ = req.occurrence.as_ref().ok_or_else(|| {
+                CoreError::InvalidScope("ThisAndFuture requires an occurrence recurrence_id".into())
+            })?;
+
+            // Write the continuation file first. A crash between this and the
+            // master truncation below leaves the original file intact; the
+            // user retries and the now-orphaned continuation is harmless (it
+            // will get cleaned up on next sync or manually).
+            let continuation = CreateEventRequest {
+                collection_id: req.collection_id.clone(),
+                summary: req.summary.clone(),
+                description: req.description.clone(),
+                location: req.location.clone(),
+                start: req.start.clone(),
+                end: req.end.clone(),
+                rrule: req.rrule.clone(),
+            };
+            let new_uid = create_event(collection_path, &continuation).await?;
+
+            // Now truncate the master.
+            let mutations = [
+                IcsMutation::TruncateRRuleUntil(occ.clone()),
+                IcsMutation::RemoveOverridesAtOrAfter(occ.clone()),
+            ];
+            let patched = patch_ics(&raw, &mutations)?;
+            write_atomic(&file_path, patched.as_bytes()).await?;
+
+            Ok(Some(new_uid))
+        }
+    }
 }
 
 fn hex_sha256(bytes: &[u8]) -> String {

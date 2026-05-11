@@ -7,6 +7,7 @@ import type {
   CreateEventRequest,
   DeleteEventRequest,
   EventInstance,
+  UpdateEventRequest,
 } from "./ipc/types";
 
 export type EventsChangedPayload =
@@ -44,6 +45,13 @@ export async function deleteEvent(
   request: DeleteEventRequest,
 ): Promise<void> {
   await invoke("delete_event", { request });
+}
+
+/** Returns the new UID for ThisAndFuture, or null for in-place scopes. */
+export async function updateEvent(
+  request: UpdateEventRequest,
+): Promise<string | null> {
+  return await invoke<string | null>("update_event", { request });
 }
 
 export async function getConfig(): Promise<AppConfig> {

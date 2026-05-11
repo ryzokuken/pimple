@@ -20,7 +20,7 @@ pub use config::{AppConfig, WeekStart, WindowGeometry};
 pub use error::{CoreError, Result};
 pub use event::{
     CreateEventRequest, DeleteEventRequest, Event, EventInstance, OverrideInstance, RRuleSpec,
-    RecurringScope,
+    RecurringScope, UpdateEventRequest,
 };
 pub use id::CollectionId;
 pub use time::EventTime;

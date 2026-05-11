@@ -3,7 +3,6 @@
 
   import CollectionSidebar from "./lib/components/CollectionSidebar.svelte";
   import EventModal from "./lib/components/EventModal.svelte";
-  import EventViewModal from "./lib/components/EventViewModal.svelte";
   import FirstRunPicker from "./lib/components/FirstRunPicker.svelte";
   import Layout from "./lib/components/Layout.svelte";
   import Navigator from "./lib/components/Navigator.svelte";
@@ -13,7 +12,7 @@
   import { config, view } from "./lib/stores";
 
   let createModalOpen = $state(false);
-  let viewingInstance = $state<EventInstance | null>(null);
+  let editingInstance = $state<EventInstance | null>(null);
 
   onMount(async () => {
     await config.load();
@@ -32,16 +31,16 @@
       </div>
     {/snippet}
     {#snippet sidebar()}<CollectionSidebar />{/snippet}
-    {#snippet main()}<WeekGrid onSelect={(e) => (viewingInstance = e)} />{/snippet}
+    {#snippet main()}<WeekGrid onSelect={(e) => (editingInstance = e)} />{/snippet}
   </Layout>
 
   {#if createModalOpen}
     <EventModal onClose={() => (createModalOpen = false)} />
   {/if}
-  {#if viewingInstance}
-    <EventViewModal
-      event={viewingInstance}
-      onClose={() => (viewingInstance = null)}
+  {#if editingInstance}
+    <EventModal
+      event={editingInstance}
+      onClose={() => (editingInstance = null)}
     />
   {/if}
 {/if}

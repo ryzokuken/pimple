@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use pimple_core::event::{DeleteEventRequest, RecurringScope};
-use pimple_core::{AppConfig, CollectionId, WeekStart, WindowGeometry};
+use pimple_core::event::{DeleteEventRequest, RecurringScope, UpdateEventRequest};
+use pimple_core::{AppConfig, CollectionId, EventTime, WeekStart, WindowGeometry};
 use sha2::{Digest, Sha256};
 use tauri::test::{MockRuntime, mock_builder, mock_context, noop_assets};
 use tauri::{App, Manager};
@@ -25,6 +25,7 @@ fn build_app() -> App<MockRuntime> {
             commands::list_collections,
             commands::events_in_range,
             commands::create_event,
+            commands::update_event,
             commands::delete_event,
             commands::get_config,
             commands::set_config,
@@ -200,6 +201,93 @@ async fn delete_event_with_hash_drift_returns_conflict() {
         "expected Conflict, got {err:?}"
     );
     assert!(cal.join(format!("{uid}.ics")).exists());
+}
+
+#[tokio::test]
+async fn update_event_all_rewrites_master_fields() {
+    let tmp = TempDir::new().unwrap();
+    let cal = tmp.path().join("personal");
+    std::fs::create_dir_all(&cal).unwrap();
+    let uid = "standup-1";
+    std::fs::write(cal.join(format!("{uid}.ics")), WEEKLY_ICS).unwrap();
+
+    let app = build_app();
+    let state = app.state::<AppState>();
+    commands::set_vdir_root(tmp.path().to_string_lossy().into_owned(), state.clone())
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    let res = commands::update_event(
+        UpdateEventRequest {
+            uid: uid.to_owned(),
+            collection_id: CollectionId::new("personal"),
+            expected_raw_hash: hex_sha256(WEEKLY_ICS),
+            scope: RecurringScope::All,
+            occurrence: None,
+            summary: "Renamed standup".to_owned(),
+            description: None,
+            location: None,
+            start: EventTime::Zoned {
+                zoned: "2026-04-20T10:00:00-04:00[America/New_York]"
+                    .parse()
+                    .unwrap(),
+            },
+            end: EventTime::Zoned {
+                zoned: "2026-04-20T10:30:00-04:00[America/New_York]"
+                    .parse()
+                    .unwrap(),
+            },
+            rrule: None,
+        },
+        state,
+    )
+    .await
+    .unwrap();
+    assert!(res.is_none());
+
+    let new = std::fs::read_to_string(cal.join(format!("{uid}.ics"))).unwrap();
+    assert!(new.contains("SUMMARY:Renamed standup"));
+}
+
+#[tokio::test]
+async fn update_event_with_hash_drift_returns_conflict() {
+    let tmp = TempDir::new().unwrap();
+    let cal = tmp.path().join("personal");
+    std::fs::create_dir_all(&cal).unwrap();
+    let uid = "standup-1";
+    std::fs::write(cal.join(format!("{uid}.ics")), WEEKLY_ICS).unwrap();
+
+    let app = build_app();
+    let state = app.state::<AppState>();
+    commands::set_vdir_root(tmp.path().to_string_lossy().into_owned(), state.clone())
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    let err = commands::update_event(
+        UpdateEventRequest {
+            uid: uid.to_owned(),
+            collection_id: CollectionId::new("personal"),
+            expected_raw_hash: "0".repeat(64),
+            scope: RecurringScope::All,
+            occurrence: None,
+            summary: "Anything".to_owned(),
+            description: None,
+            location: None,
+            start: EventTime::Utc {
+                instant: "2026-04-20T14:00:00Z".parse().unwrap(),
+            },
+            end: EventTime::Utc {
+                instant: "2026-04-20T14:30:00Z".parse().unwrap(),
+            },
+            rrule: None,
+        },
+        state,
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(err, IpcError::Conflict { .. }));
 }
 
 #[tokio::test]

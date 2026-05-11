@@ -122,3 +122,34 @@ pub struct DeleteEventRequest {
     /// Ignored for `All`. Should equal the occurrence's `RECURRENCE-ID`.
     pub occurrence: Option<EventTime>,
 }
+
+/// User-supplied data for editing an event.
+///
+/// Carries the full new field set for the event being edited. Semantics
+/// depend on `scope`:
+///
+/// * `All` — mutate the master VEVENT in place with these values.
+/// * `ThisInstance` — append a new override VEVENT pinned to `occurrence`
+///   carrying these values; master is untouched apart from the override.
+/// * `ThisAndFuture` — truncate the master `RRULE` with `UNTIL=occurrence`,
+///   drop any overrides at-or-after `occurrence`, and create a *new* file
+///   with a fresh UID carrying these values (the continuation series).
+///   The new UID is returned from `update_event`.
+///
+/// See v0.2 spec §4.2 / §4.3 for the design rationale (and the
+/// new-UID-on-split decision).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../frontend/src/lib/ipc/types/")]
+pub struct UpdateEventRequest {
+    pub uid: String,
+    pub collection_id: CollectionId,
+    pub expected_raw_hash: String,
+    pub scope: RecurringScope,
+    pub occurrence: Option<EventTime>,
+    pub summary: String,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    pub start: EventTime,
+    pub end: EventTime,
+    pub rrule: Option<RRuleSpec>,
+}
