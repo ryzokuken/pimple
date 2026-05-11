@@ -7,4 +7,8 @@ export type { CollectionId } from "./CollectionId";
 export type { EventTime } from "./EventTime";
 export type { AppConfig } from "./AppConfig";
 export type { WeekStart } from "./WeekStart";
+export type { WindowGeometry } from "./WindowGeometry";
 export type { CreateEventRequest } from "./CreateEventRequest";
+export type { DeleteEventRequest } from "./DeleteEventRequest";
+export type { UpdateEventRequest } from "./UpdateEventRequest";
+export type { RecurringScope } from "./RecurringScope";

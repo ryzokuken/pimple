@@ -2,27 +2,68 @@
   import { Temporal } from "@js-temporal/polyfill";
 
   import { collections } from "../stores";
-  import { createEvent } from "../ipc";
-  import type { CollectionId, CreateEventRequest, EventTime } from "../ipc/types";
+  import { createEvent, deleteEvent, updateEvent } from "../ipc";
+  import type {
+    CollectionId,
+    CreateEventRequest,
+    DeleteEventRequest,
+    EventInstance,
+    EventTime,
+    RecurringScope,
+    UpdateEventRequest,
+  } from "../ipc/types";
+  import { eventTimeToZoned } from "../time/parse";
+  import RecurringScopeDialog from "./RecurringScopeDialog.svelte";
 
-  type Props = { onClose: () => void };
-  const { onClose }: Props = $props();
+  type Props = {
+    onClose: () => void;
+    /** When present, the modal opens in edit mode pre-filled from this instance. */
+    event?: EventInstance | null;
+  };
+  const { onClose, event = null }: Props = $props();
+
+  const mode = $derived(event === null ? "create" : "edit");
 
   const systemTz = Temporal.Now.timeZoneId();
   const todayIso = Temporal.Now.plainDateISO().toString();
 
-  let summary = $state("");
-  let description = $state("");
-  let location = $state("");
-  let allDay = $state(false);
-  let startDate = $state(todayIso);
-  let startTime = $state("09:00");
-  let endDate = $state(todayIso);
-  let endTime = $state("10:00");
-  let collectionId = $state<string>("");
+  function eventTimeToFormParts(t: EventTime): {
+    date: string;
+    time: string;
+    allDay: boolean;
+  } {
+    if (t.kind === "all_day") {
+      return { date: t.date, time: "00:00", allDay: true };
+    }
+    const z = eventTimeToZoned(t, systemTz);
+    const date = z.toPlainDate().toString();
+    const time = `${String(z.hour).padStart(2, "0")}:${String(z.minute).padStart(2, "0")}`;
+    return { date, time, allDay: false };
+  }
+
+  // Initial form state — pre-filled from `event` when present.
+  const initStart = event
+    ? eventTimeToFormParts(event.start)
+    : { date: todayIso, time: "09:00", allDay: false };
+  const initEnd = event
+    ? eventTimeToFormParts(event.end)
+    : { date: todayIso, time: "10:00", allDay: false };
+
+  let summary = $state(event?.summary ?? "");
+  let description = $state(event?.description ?? "");
+  let location = $state(event?.location ?? "");
+  let allDay = $state(initStart.allDay);
+  let startDate = $state(initStart.date);
+  let startTime = $state(initStart.time);
+  let endDate = $state(initEnd.date);
+  let endTime = $state(initEnd.time);
+  let collectionId = $state<string>(
+    event ? (event.collection_id as unknown as string) : "",
+  );
   let submitting = $state(false);
   let error = $state<string | null>(null);
   let titleInput = $state<HTMLInputElement | null>(null);
+  let scopeDialog = $state<null | "save" | "delete">(null);
 
   $effect(() => {
     if (collectionId === "" && collections.list.length > 0) {
@@ -38,19 +79,23 @@
     if (allDay) {
       return { kind: "all_day", date };
     }
-    const dt = Temporal.PlainDateTime.from(`${date}T${time}:00`)
-      .toZonedDateTime(systemTz);
+    const dt = Temporal.PlainDateTime.from(`${date}T${time}:00`).toZonedDateTime(
+      systemTz,
+    );
     return { kind: "zoned", zoned: dt.toString() };
   }
 
-  async function submit(e: SubmitEvent): Promise<void> {
-    e.preventDefault();
-    if (submitting) return;
+  async function performSave(scope: RecurringScope): Promise<void> {
+    if (!event) return;
     submitting = true;
     error = null;
     try {
-      const req: CreateEventRequest = {
-        collection_id: collectionId as unknown as CollectionId,
+      const req: UpdateEventRequest = {
+        uid: event.event_uid,
+        collection_id: event.collection_id,
+        expected_raw_hash: event.raw_hash,
+        scope,
+        occurrence: scope === "all" ? null : event.recurrence_id,
         summary,
         description: description || null,
         location: location || null,
@@ -58,34 +103,108 @@
         end: eventTimeFor(endDate, endTime),
         rrule: null,
       };
-      await createEvent(req);
+      await updateEvent(req);
       onClose();
     } catch (e) {
       error = String(e);
     } finally {
       submitting = false;
+      scopeDialog = null;
+    }
+  }
+
+  async function performDelete(scope: RecurringScope): Promise<void> {
+    if (!event) return;
+    submitting = true;
+    error = null;
+    try {
+      const req: DeleteEventRequest = {
+        uid: event.event_uid,
+        collection_id: event.collection_id,
+        expected_raw_hash: event.raw_hash,
+        scope,
+        occurrence: scope === "all" ? null : event.recurrence_id,
+      };
+      await deleteEvent(req);
+      onClose();
+    } catch (e) {
+      error = String(e);
+    } finally {
+      submitting = false;
+      scopeDialog = null;
+    }
+  }
+
+  async function submit(e: SubmitEvent): Promise<void> {
+    e.preventDefault();
+    if (submitting) return;
+
+    if (mode === "create") {
+      submitting = true;
+      error = null;
+      try {
+        const req: CreateEventRequest = {
+          collection_id: collectionId as unknown as CollectionId,
+          summary,
+          description: description || null,
+          location: location || null,
+          start: eventTimeFor(startDate, startTime),
+          end: eventTimeFor(endDate, endTime),
+          rrule: null,
+        };
+        await createEvent(req);
+        onClose();
+      } catch (e) {
+        error = String(e);
+      } finally {
+        submitting = false;
+      }
+      return;
+    }
+
+    // Edit mode
+    if (event && event.is_recurring) {
+      scopeDialog = "save";
+    } else {
+      await performSave("all");
+    }
+  }
+
+  function onDeleteClick(): void {
+    if (!event) return;
+    if (event.is_recurring) {
+      scopeDialog = "delete";
+    } else {
+      void performDelete("all");
     }
   }
 
   function onKey(e: KeyboardEvent): void {
-    if (e.key === "Escape") onClose();
+    if (e.key === "Escape" && scopeDialog === null) onClose();
   }
+
+  const title = $derived(mode === "create" ? "New event" : "Edit event");
+  const submitLabel = $derived(
+    mode === "create"
+      ? submitting ? "Creating…" : "Create"
+      : submitting ? "Saving…" : "Save",
+  );
 </script>
 
 <svelte:window onkeydown={onKey} />
 
-<div class="backdrop" role="presentation" onclick={onClose}>
+<div class="backdrop" role="presentation" onclick={onClose} onkeydown={() => {}}>
   <div
     class="modal"
     role="dialog"
     aria-modal="true"
-    aria-label="Create event"
+    aria-label={title}
     tabindex="-1"
     onclick={(e) => e.stopPropagation()}
     onkeydown={(e) => { if (e.key !== "Escape") e.stopPropagation(); }}
   >
     <form onsubmit={submit}>
-      <h2>New event</h2>
+      <h2>{title}</h2>
 
       <label class="row">
         <span>Title</span>
@@ -114,15 +233,17 @@
         </label>
       </div>
 
-      <label class="row">
-        <span>Calendar</span>
-        <select bind:value={collectionId} required>
-          {#each collections.list as c (c.id)}
-            {@const cid = c.id as unknown as string}
-            <option value={cid}>{c.display_name}</option>
-          {/each}
-        </select>
-      </label>
+      {#if mode === "create"}
+        <label class="row">
+          <span>Calendar</span>
+          <select bind:value={collectionId} required>
+            {#each collections.list as c (c.id)}
+              {@const cid = c.id as unknown as string}
+              <option value={cid}>{c.display_name}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
 
       <label class="row">
         <span>Location</span>
@@ -139,14 +260,39 @@
       {/if}
 
       <div class="actions">
+        {#if mode === "edit"}
+          <button
+            type="button"
+            class="danger"
+            disabled={submitting}
+            onclick={onDeleteClick}
+            data-testid="delete-event"
+          >
+            Delete
+          </button>
+        {/if}
         <button type="button" onclick={onClose}>Cancel</button>
-        <button type="submit" disabled={submitting} class="primary">
-          {submitting ? "Creating…" : "Create"}
+        <button type="submit" disabled={submitting} class="primary" data-testid="submit-event">
+          {submitLabel}
         </button>
       </div>
     </form>
   </div>
 </div>
+
+{#if scopeDialog === "save"}
+  <RecurringScopeDialog
+    verb="edit"
+    onChoose={(scope) => performSave(scope)}
+    onCancel={() => (scopeDialog = null)}
+  />
+{:else if scopeDialog === "delete"}
+  <RecurringScopeDialog
+    verb="delete"
+    onChoose={(scope) => performDelete(scope)}
+    onCancel={() => (scopeDialog = null)}
+  />
+{/if}
 
 <style>
   .backdrop {
@@ -172,6 +318,8 @@
   .actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
   button { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; color: var(--fg); font: inherit; cursor: pointer; }
   button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  button.danger { color: #dc2626; border-color: #dc2626; margin-right: auto; }
+  button.danger:hover { background: color-mix(in oklab, #dc2626 12%, transparent); }
   button:disabled { opacity: 0.5; cursor: default; }
   .error { color: #dc2626; font-size: 0.85rem; margin: 0.25rem 0 0; }
 </style>

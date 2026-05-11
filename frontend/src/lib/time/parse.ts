@@ -1,6 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 
-import type { EventTime } from "../ipc/types";
+import type { EventTime, WeekStart } from "../ipc/types";
 
 /**
  * Convert an `EventTime` from the IPC boundary into a Temporal type the UI
@@ -46,4 +46,35 @@ export function rangeIso(
     start: start.toInstant().toString(),
     end: start.add({ days: durationDays }).toInstant().toString(),
   };
+}
+
+/**
+ * Visible-day range for a month grid containing `anyDayInMonth`. The grid
+ * starts at the most recent `weekStart` on or before the 1st of the month
+ * and ends at the first `weekStart` strictly after the last of the month —
+ * i.e., always a whole number of weeks (35 or 42 days depending on month
+ * shape and week-start convention).
+ */
+export function monthGridFor(
+  anyDayInMonth: Temporal.ZonedDateTime,
+  weekStart: WeekStart,
+): { start: Temporal.ZonedDateTime; days: number } {
+  const firstOfMonth = anyDayInMonth
+    .with({ day: 1 })
+    .with({
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+      microsecond: 0,
+      nanosecond: 0,
+    });
+  const gridStart = startOfWeek(firstOfMonth, weekStart);
+  const lastOfMonth = firstOfMonth.add({ days: firstOfMonth.daysInMonth - 1 });
+  const afterLast = startOfWeek(lastOfMonth, weekStart).add({ days: 7 });
+  const days = Math.round(
+    (afterLast.epochMilliseconds - gridStart.epochMilliseconds) /
+      86_400_000,
+  );
+  return { start: gridStart, days };
 }

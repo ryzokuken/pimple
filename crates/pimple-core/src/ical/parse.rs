@@ -6,6 +6,7 @@
 
 use chrono::TimeZone as _;
 use icalendar::{Calendar, CalendarComponent, CalendarDateTime, Component, DatePerhapsTime};
+use sha2::{Digest, Sha256};
 
 use crate::error::{CoreError, Result};
 use crate::event::{Event, OverrideInstance, RRuleSpec};
@@ -105,6 +106,8 @@ pub fn parse_ics(text: &str, collection_id: CollectionId) -> Result<Event> {
         .map(parse_override)
         .collect::<Result<Vec<_>>>()?;
 
+    let raw_hash = hex::encode(Sha256::digest(text.as_bytes()));
+
     Ok(Event {
         uid,
         collection_id,
@@ -118,6 +121,7 @@ pub fn parse_ics(text: &str, collection_id: CollectionId) -> Result<Event> {
         overrides,
         created_at,
         modified_at,
+        raw_hash,
         raw_ics: text.to_owned(),
     })
 }

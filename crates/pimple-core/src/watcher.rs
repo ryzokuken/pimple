@@ -96,10 +96,9 @@ async fn process_loop(
     mut rx: mpsc::UnboundedReceiver<NotifyEvent>,
 ) {
     let mut pending: HashMap<PathBuf, std::time::Instant> = HashMap::new();
-    let collections: Arc<tokio::sync::RwLock<Vec<Collection>>> =
-        Arc::new(tokio::sync::RwLock::new(
-            enumerate_collections(&root).unwrap_or_default(),
-        ));
+    let collections: Arc<tokio::sync::RwLock<Vec<Collection>>> = Arc::new(
+        tokio::sync::RwLock::new(enumerate_collections(&root).unwrap_or_default()),
+    );
 
     loop {
         tokio::select! {
@@ -167,11 +166,7 @@ async fn handle_path(
         return Ok(());
     }
     let snapshot = collections.read().await;
-    let Some(collection) = snapshot
-        .iter()
-        .find(|c| path.starts_with(&c.path))
-        .cloned()
-    else {
+    let Some(collection) = snapshot.iter().find(|c| path.starts_with(&c.path)).cloned() else {
         return Ok(());
     };
     drop(snapshot);
@@ -201,4 +196,3 @@ async fn handle_path(
     }
     Ok(())
 }
-

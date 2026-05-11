@@ -7,4 +7,9 @@ import type { RRuleSpec } from "./RRuleSpec";
 /**
  * Persisted event definition. One per iCalendar UID.
  */
-export type Event = { uid: string, collection_id: CollectionId, summary: string, description: string | null, location: string | null, start: EventTime, end: EventTime, rrule: RRuleSpec | null, exdates: Array<EventTime>, overrides: Array<OverrideInstance>, created_at: string, modified_at: string, };
+export type Event = { uid: string, collection_id: CollectionId, summary: string, description: string | null, location: string | null, start: EventTime, end: EventTime, rrule: RRuleSpec | null, exdates: Array<EventTime>, overrides: Array<OverrideInstance>, created_at: string, modified_at: string, 
+/**
+ * SHA-256 of `raw_ics` as a 64-char lowercase hex string. Used for
+ * optimistic concurrency on update/delete; see v0.2 spec §4.1.
+ */
+raw_hash: string, };

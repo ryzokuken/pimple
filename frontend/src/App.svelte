@@ -1,27 +1,55 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+
   import CollectionSidebar from "./lib/components/CollectionSidebar.svelte";
   import EventModal from "./lib/components/EventModal.svelte";
+  import FirstRunPicker from "./lib/components/FirstRunPicker.svelte";
   import Layout from "./lib/components/Layout.svelte";
+  import MonthGrid from "./lib/components/MonthGrid.svelte";
   import Navigator from "./lib/components/Navigator.svelte";
   import Toasts from "./lib/components/Toasts.svelte";
   import WeekGrid from "./lib/components/WeekGrid.svelte";
+  import type { EventInstance } from "./lib/ipc/types";
+  import { config, view } from "./lib/stores";
 
-  let modalOpen = $state(false);
+  let createModalOpen = $state(false);
+  let editingInstance = $state<EventInstance | null>(null);
+
+  onMount(async () => {
+    await config.load();
+    view.setWeekStart(config.weekStart);
+  });
 </script>
 
-<Layout>
-  {#snippet nav()}
-    <div class="nav-wrap">
-      <Navigator />
-      <button type="button" class="new" onclick={() => (modalOpen = true)}>+ New</button>
-    </div>
-  {/snippet}
-  {#snippet sidebar()}<CollectionSidebar />{/snippet}
-  {#snippet main()}<WeekGrid />{/snippet}
-</Layout>
+{#if config.loaded && config.vdirRoot === null}
+  <FirstRunPicker />
+{:else if config.loaded}
+  <Layout>
+    {#snippet nav()}
+      <div class="nav-wrap">
+        <Navigator />
+        <button type="button" class="new" onclick={() => (createModalOpen = true)}>+ New</button>
+      </div>
+    {/snippet}
+    {#snippet sidebar()}<CollectionSidebar />{/snippet}
+    {#snippet main()}
+      {#if view.mode === "week"}
+        <WeekGrid onSelect={(e) => (editingInstance = e)} />
+      {:else}
+        <MonthGrid onSelect={(e) => (editingInstance = e)} />
+      {/if}
+    {/snippet}
+  </Layout>
 
-{#if modalOpen}
-  <EventModal onClose={() => (modalOpen = false)} />
+  {#if createModalOpen}
+    <EventModal onClose={() => (createModalOpen = false)} />
+  {/if}
+  {#if editingInstance}
+    <EventModal
+      event={editingInstance}
+      onClose={() => (editingInstance = null)}
+    />
+  {/if}
 {/if}
 
 <Toasts />

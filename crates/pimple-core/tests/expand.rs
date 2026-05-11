@@ -59,8 +59,11 @@ fn weekly_recurrence_yields_correct_instances_in_range() {
 
 #[test]
 fn exdate_skips_the_excluded_instance() {
-    let event = parse_ics(&fixture("weekly_with_exdate.ics"), CollectionId::new("test"))
-        .unwrap();
+    let event = parse_ics(
+        &fixture("weekly_with_exdate.ics"),
+        CollectionId::new("test"),
+    )
+    .unwrap();
     let instances = expand_in_range(
         &event,
         ts("2026-01-01T00:00:00Z"),

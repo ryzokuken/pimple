@@ -2,32 +2,41 @@
   import { Temporal } from "@js-temporal/polyfill";
 
   import EventBlock from "./EventBlock.svelte";
-  import { collections, events } from "../stores";
+  import { collections, events, view } from "../stores";
   import { layoutWeek, type LaidOutEvent } from "../layout";
   import { eventTimeToZoned } from "../time/parse";
+
+  type Props = {
+    onSelect?: (e: LaidOutEvent) => void;
+  };
+  const { onSelect }: Props = $props();
 
   const systemTz = Temporal.Now.timeZoneId();
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
   const DAYS = Array.from({ length: 7 }, (_, i) => i);
 
-  const nowZoned = Temporal.Now.zonedDateTimeISO(systemTz);
-  const todayIndex = (nowZoned.dayOfWeek - 1 + 7) % 7;
-  const nowMinute = nowZoned.hour * 60 + nowZoned.minute;
+  const nowZoned = $derived(Temporal.Now.zonedDateTimeISO(systemTz));
+  const nowMinute = $derived(nowZoned.hour * 60 + nowZoned.minute);
 
-  const weekStart = $derived(
-    Temporal.Now.zonedDateTimeISO(systemTz)
-      .subtract({ days: (Temporal.Now.zonedDateTimeISO(systemTz).dayOfWeek - 1 + 7) % 7 })
-      .with({ hour: 0, minute: 0, second: 0, millisecond: 0, microsecond: 0, nanosecond: 0 }),
-  );
+  /** Today's index within the visible week (0..6), or -1 if today isn't in view. */
+  const todayIndex = $derived.by(() => {
+    const cursorDay = Math.floor(view.cursor.epochMilliseconds / 86_400_000);
+    const nowDay = Math.floor(nowZoned.epochMilliseconds / 86_400_000);
+    const offset = nowDay - cursorDay;
+    return offset >= 0 && offset < 7 ? offset : -1;
+  });
 
   const laidOut: LaidOutEvent[] = $derived.by(() => {
+    const cursorDayMs = Math.floor(view.cursor.epochMilliseconds / 86_400_000);
     const items = events.instances.map((ei) => {
       const start = eventTimeToZoned(ei.start, systemTz);
       const end = eventTimeToZoned(ei.end, systemTz);
       const dayIndex = Math.max(
         0,
-        Math.min(6, Math.floor(start.epochMilliseconds / 86_400_000) -
-          Math.floor(weekStart.epochMilliseconds / 86_400_000)),
+        Math.min(
+          6,
+          Math.floor(start.epochMilliseconds / 86_400_000) - cursorDayMs,
+        ),
       );
       const startMinute = start.hour * 60 + start.minute;
       const endMinute = end.hour * 60 + end.minute;
@@ -42,7 +51,7 @@
   }
 
   function dayLabel(i: number): string {
-    const d = weekStart.add({ days: i });
+    const d = view.cursor.add({ days: i });
     return d.toLocaleString("en", { weekday: "short", day: "numeric" });
   }
 </script>
@@ -70,7 +79,11 @@
             <div class="now-line" style:top={`${(nowMinute / 60) * 48}px`} aria-hidden="true"></div>
           {/if}
           {#each laidOut.filter((e) => e.dayIndex === d) as ev (`${ev.event_uid}-${ev.startMinute}`)}
-            <EventBlock event={ev} color={colorForCollection(ev.collection_id as unknown as string)} />
+            <EventBlock
+              event={ev}
+              color={colorForCollection(ev.collection_id as unknown as string)}
+              {onSelect}
+            />
           {/each}
         </div>
       {/each}

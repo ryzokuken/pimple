@@ -3,10 +3,10 @@
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Runtime};
-use tracing::field::Visit;
 use tracing::Subscriber;
-use tracing_subscriber::layer::Context;
+use tracing::field::Visit;
 use tracing_subscriber::Layer;
+use tracing_subscriber::layer::Context;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Diagnostic {
