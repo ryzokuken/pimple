@@ -8,4 +8,5 @@ pub mod build;
 pub mod expand;
 pub mod from_chrono;
 pub mod parse;
+pub mod patch;
 pub mod to_chrono;
