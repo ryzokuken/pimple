@@ -8,12 +8,13 @@
   import Navigator from "./lib/components/Navigator.svelte";
   import Toasts from "./lib/components/Toasts.svelte";
   import WeekGrid from "./lib/components/WeekGrid.svelte";
-  import { config } from "./lib/stores";
+  import { config, view } from "./lib/stores";
 
   let modalOpen = $state(false);
 
   onMount(async () => {
     await config.load();
+    view.setWeekStart(config.weekStart);
   });
 </script>
 

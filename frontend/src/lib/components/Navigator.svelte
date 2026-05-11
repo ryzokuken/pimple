@@ -1,45 +1,27 @@
 <script lang="ts">
-  import { untrack } from "svelte";
-  import { Temporal } from "@js-temporal/polyfill";
+  import type { Temporal } from "@js-temporal/polyfill";
 
-  import { collections, events } from "../stores";
-  import { rangeIso, startOfWeek } from "../time/parse";
-
-  type Props = { weekStart?: "monday" | "sunday" };
-  const { weekStart = "monday" }: Props = $props();
-
-  const systemTz = Temporal.Now.timeZoneId();
-
-  let cursor = $state<Temporal.ZonedDateTime>(
-    startOfWeek(Temporal.Now.zonedDateTimeISO(systemTz), untrack(() => weekStart)),
-  );
+  import { collections, events, view } from "../stores";
+  import { rangeIso } from "../time/parse";
 
   $effect(() => {
-    const r = rangeIso(cursor, 7);
+    const r = rangeIso(view.cursor, 7);
     void events.setView(r.start, r.end, collections.visibleIds());
   });
 
-  function shift(deltaDays: number): void {
-    cursor = cursor.add({ days: deltaDays });
-  }
-
-  function goToday(): void {
-    cursor = startOfWeek(Temporal.Now.zonedDateTimeISO(systemTz), weekStart);
-  }
-
   const label = $derived.by(() => {
-    const end = cursor.add({ days: 6 });
+    const end = view.cursor.add({ days: 6 });
     const fmt = (d: Temporal.ZonedDateTime) =>
-      `${d.toLocaleString("en", { month: "short", day: "numeric" })}`;
-    return `${fmt(cursor)} – ${fmt(end)}, ${cursor.year}`;
+      d.toLocaleString("en", { month: "short", day: "numeric" });
+    return `${fmt(view.cursor)} – ${fmt(end)}, ${view.cursor.year}`;
   });
 </script>
 
 <header class="navigator" aria-label="Week navigator">
   <div class="left">
-    <button type="button" onclick={() => shift(-7)} aria-label="Previous week">‹</button>
-    <button type="button" onclick={goToday}>Today</button>
-    <button type="button" onclick={() => shift(7)} aria-label="Next week">›</button>
+    <button type="button" onclick={() => view.shift(-7)} aria-label="Previous week">‹</button>
+    <button type="button" onclick={() => view.goToday()}>Today</button>
+    <button type="button" onclick={() => view.shift(7)} aria-label="Next week">›</button>
   </div>
   <h1 class="range">{label}</h1>
 </header>
